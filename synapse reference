@@ -1,0 +1,208 @@
+--step1
+create DATABASE serverlessdwh1
+COLLATE latin1_General_100_BIN2_UTF8;
+CREATE MASTER KEY ENCRYPTION BY PASSWORD='StoragePassword@123';
+
+--step2
+CREATE DATABASE SCOPED CREDENTIAL adlsextcred
+WITH IDENTITY='SHARED ACCESS SIGNATURE',
+--WITH IDENTITY ='Managed Identity'
+SECRET = 'sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupx&se=2022-03-21T20:29:40Z&st=2022-03-21T12:29:40Z&spr=https&sig=D%2BqV90dIbQTtoHja1QfkxaXJHUidHLtbu826ukRwSQo%3D'
+
+--create externa data format
+
+--azure synapse serverless
+
+CREATE EXTERNAL DATA SOURCE demonamedatasource
+WITH ( LOCATION = 'https://synapsedatalake.dfs.core.windows.net/',
+CREDENTIAL=[adlsextcred])
+
+--create external file format
+--abfss://synapsedatalakefs@synapsedatalake.dfs.core.windows.net/names.csv
+CREATE EXTERNAL FILE FORMAT demonamefileformat
+WITH (
+    FORMAT_TYPE = DELIMITEDTEXT,
+    FORMAT_OPTIONS (
+      FIELD_TERMINATOR = ',',
+      STRING_DELIMITER = '"',
+      FIRST_ROW = 2,
+      USE_TYPE_DEFAULT = FALSE,
+      ENCODING = 'UTF8' )
+)
+
+CREATE SCHEMA nyctaxi
+
+
+CREATE EXTERNAL TABLE nyctaxi.nycdemotable
+WITH (
+   LOCATION = 'synapsedatalakefs/output/',
+   DATA_SOURCE = demonamedatasource,
+   FILE_FORMAT = demonamefileformat
+)
+AS
+-- This is auto-generated code
+SELECT
+    name,age,email
+FROM
+    OPENROWSET(
+        BULK 'https://synapsedatalake.dfs.core.windows.net/synapsedatalakefs/input/names.csv',
+        FORMAT = 'CSV',
+        HEADER_ROW = TRUE,
+        PARSER_VERSION = '2.0'
+    ) AS [result]
+
+
+select * from nyctaxi.nycdemotable
+
+
+----external table deidcated synapse
+IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseParquetFormat') 
+	CREATE EXTERNAL FILE FORMAT [SynapseParquetFormat] 
+	WITH ( FORMAT_TYPE = PARQUET)
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'synapsedatalakefs_synapsedatalake_dfs_core_windows_net') 
+	CREATE EXTERNAL DATA SOURCE [synapsedatalakefs_synapsedatalake_dfs_core_windows_net] 
+	WITH (
+		LOCATION = 'abfss://synapsedatalakefs@synapsedatalake.dfs.core.windows.net' 
+	)
+GO
+
+CREATE EXTERNAL TABLE externaltableparquet (
+	[registration_dttm] datetime2(7),
+	[id] int,
+	[first_name] nvarchar(4000),
+	[last_name] nvarchar(4000),
+	[email] nvarchar(4000),
+	[gender] nvarchar(4000),
+	[ip_address] nvarchar(4000),
+	[cc] nvarchar(4000),
+	[country] nvarchar(4000),
+	[birthdate] nvarchar(4000),
+	[salary] float,
+	[title] nvarchar(4000),
+	[comments] nvarchar(4000)
+	)
+	WITH (
+	LOCATION = 'input/userdata1.parquet',
+	DATA_SOURCE = [synapsedatalakefs_synapsedatalake_dfs_core_windows_net],
+	FILE_FORMAT = [SynapseParquetFormat]
+	)
+GO
+
+
+SELECT TOP 100 * FROM dbo.externaltableparquet
+GO
+
+----dedicate sql external table
+
+
+
+----external table deidcated synapse
+IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapsecsvFormat') 
+	CREATE EXTERNAL FILE FORMAT [SynapsecsvFormat] 
+	WITH (
+    FORMAT_TYPE = DELIMITEDTEXT,
+    FORMAT_OPTIONS (
+      FIELD_TERMINATOR = ',',
+      STRING_DELIMITER = '"',
+      FIRST_ROW = 2,
+      USE_TYPE_DEFAULT = FALSE,
+      ENCODING = 'UTF8' )
+)
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'synapsedatalakefs1_synapsedatalake_dfs_core_windows_net') 
+	CREATE EXTERNAL DATA SOURCE [synapsedatalakefs1_synapsedatalake_dfs_core_windows_net] 
+	WITH (
+		LOCATION = 'abfss://synapsedatalakefs@synapsedatalake.dfs.core.windows.net' 
+	)
+GO
+
+CREATE EXTERNAL TABLE externaltablecsv (
+	[name] NVARCHAR(100),
+	[age] int,
+	[email] nvarchar(100)
+	)
+	WITH (
+	LOCATION = 'input/names.csv',
+	DATA_SOURCE = [synapsedatalakefs1_synapsedatalake_dfs_core_windows_net],
+	FILE_FORMAT = [SynapsecsvFormat]
+	)
+GO
+
+
+select * from externaltablecsv
+
+
+SELECT TOP 100 * FROM dbo.externaltableparquet
+GO
+
+
+--ctas
+
+external table to internal table without schema definitiion
+
+CREATE TABLE INTERNALTABLE
+WITH
+ (
+     DISTRIBUTION = ROUND_ROBIN,
+     HEAP
+ )
+AS
+SELECT
+    [name],
+    [age],
+    [email]
+FROM dbo.externaltablecsv
+
+
+----dedicated external table with loading full path
+CREATE MASTER KEY
+--DROP  EXTERNAL FILE FORMAT SynapseDelimitedTextFormat
+
+CREATE DATABASE SCOPED CREDENTIAL adlsextcred
+WITH IDENTITY='SHARED ACCESS SIGNATURE',
+--WITH IDENTITY ='Managed Identity'
+SECRET = 'sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupx&se=2022-03-22T02:26:10Z&st=2022-03-21T18:26:10Z&spr=https&sig=QwXf8J3hhVIutAPqNAbwCmq8sfRTEgzRdHs%2BZpSLOBs%3D'
+
+
+IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseDelimitedTextFormat') 
+	CREATE EXTERNAL FILE FORMAT [SynapseDelimitedTextFormat] 
+	WITH ( FORMAT_TYPE = DELIMITEDTEXT ,
+	       FORMAT_OPTIONS (
+			 FIELD_TERMINATOR = ',',
+			 FIRST_ROW = 2,
+			 USE_TYPE_DEFAULT = FALSE,
+			 ENCODING = 'UTF8' 
+			))
+GO
+--DROP EXTERNAL DATA SOURCE synapsecogrxadlsfs_synapsecogrxadls_dfs_core_windows_net
+IF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'synapsecogrxadlsfs_synapsecogrxadls_dfs_core_windows_net') 
+	CREATE EXTERNAL DATA SOURCE [synapsecogrxadlsfs_synapsecogrxadls_dfs_core_windows_net] 
+	WITH (
+		LOCATION = 'abfss://synapsecogrxadlsfs@synapsecogrxadls.dfs.core.windows.net', 
+		TYPE = HADOOP
+	)
+GO
+DROP EXTERNAL TABLE cogrxexternal
+GO
+
+CREATE EXTERNAL TABLE cogrxexternal (
+	[name ] nvarchar(50),
+	[age] int,
+	[email] nvarchar(50)
+	)
+	WITH (
+	LOCATION = 'input/',
+	DATA_SOURCE = [synapsecogrxadlsfs_synapsecogrxadls_dfs_core_windows_net],
+	FILE_FORMAT = [SynapseDelimitedTextFormat]
+	)
+GO
+
+select count(*) from cogrxexternal
+GO
+
+
+SELECT TOP 100 * FROM dbo.cogrxexternal
+GO
