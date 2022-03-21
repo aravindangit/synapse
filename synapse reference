@@ -157,7 +157,7 @@ SELECT
 FROM dbo.externaltablecsv
 
 
-----dedicated external table with loading full path
+*********************************dedicated external table with loading full path******************************8
 CREATE MASTER KEY
 --DROP  EXTERNAL FILE FORMAT SynapseDelimitedTextFormat
 
@@ -183,6 +183,60 @@ IF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'synapsecogr
 	WITH (
 		LOCATION = 'abfss://synapsecogrxadlsfs@synapsecogrxadls.dfs.core.windows.net', 
 		TYPE = HADOOP
+	)
+GO
+DROP EXTERNAL TABLE cogrxexternal
+GO
+
+CREATE EXTERNAL TABLE cogrxexternal (
+	[name ] nvarchar(50),
+	[age] int,
+	[email] nvarchar(50)
+	)
+	WITH (
+	LOCATION = 'input/',
+	DATA_SOURCE = [synapsecogrxadlsfs_synapsecogrxadls_dfs_core_windows_net],
+	FILE_FORMAT = [SynapseDelimitedTextFormat]
+	)
+GO
+
+select count(*) from cogrxexternal
+GO
+
+
+SELECT TOP 100 * FROM dbo.cogrxexternal
+GO
+
+
+***WILDCARD DEDICATED***********
+
+
+CREATE MASTER KEY
+--DROP  EXTERNAL FILE FORMAT SynapseDelimitedTextFormat
+
+CREATE DATABASE SCOPED CREDENTIAL adlsextcred
+WITH IDENTITY='SHARED ACCESS SIGNATURE',
+--WITH IDENTITY ='Managed Identity'
+SECRET = 'sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupx&se=2022-03-22T02:26:10Z&st=2022-03-21T18:26:10Z&spr=https&sig=QwXf8J3hhVIutAPqNAbwCmq8sfRTEgzRdHs%2BZpSLOBs%3D'
+
+
+IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseDelimitedTextFormat') 
+	CREATE EXTERNAL FILE FORMAT [SynapseDelimitedTextFormat] 
+	WITH ( FORMAT_TYPE = DELIMITEDTEXT ,
+	       FORMAT_OPTIONS (
+			 FIELD_TERMINATOR = ',',
+			 FIRST_ROW = 2,
+			 USE_TYPE_DEFAULT = FALSE,
+			 ENCODING = 'UTF8' 
+			))
+GO
+--DROP EXTERNAL DATA SOURCE synapsecogrxadlsfs_synapsecogrxadls_dfs_core_windows_net
+IF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'synapsecogrxadlsfs1_synapsecogrxadls_dfs_core_windows_net') 
+	CREATE EXTERNAL DATA SOURCE [synapsecogrxadlsfs1_synapsecogrxadls_dfs_core_windows_net] 
+	WITH (
+		LOCATION = 'abfss://synapsecogrxadlsfs@synapsecogrxadls.dfs.core.windows.net', 
+		TYPE = HADOOP,
+		CREDENTIAL=[adlsextcred]
 	)
 GO
 DROP EXTERNAL TABLE cogrxexternal
