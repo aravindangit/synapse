@@ -330,3 +330,14 @@ SELECT COUNT(*) FROM DBO.REGISTRATION
 
 	DATA_SOURCE = [synapsedatalakefs_synapsedatalake_dfs_core_windows_net],
 	FILE_FORMAT = [SynapseParquetFormat]
+
+
+    ---AUTO CREATION TABLE
+
+COPY INTO [AUTOREGISTRATION]
+FROM 'https://cogrxsynapselake.dfs.core.windows.net/cogrxsynapselakefs/input/userdata1.parquet'
+WITH (
+    FILE_TYPE = 'Parquet',
+    CREDENTIAL = ( IDENTITY = 'Shared Access Signature',  SECRET='sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupx&se=2022-03-23T02:40:34Z&st=2022-03-22T18:40:34Z&spr=https&sig=0bl08HVi%2F0NiNAh9KO%2FoxbJj1hc6Lv8Ndxhjf8aDcJU%3D'),
+    AUTO_CREATE_TABLE = 'ON'
+)
