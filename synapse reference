@@ -266,3 +266,67 @@ WITH (
 
 SELECT TOP 100 * FROM dbo.cogrxexternal
 GO
+
+--********creating dedicate sql table
+
+CREATE  TABLE registration (
+	[registration_dttm] datetime2(7),
+	[id] int,
+	[first_name] nvarchar(4000),
+	[last_name] nvarchar(4000),
+	[email] nvarchar(4000),
+	[gender] nvarchar(4000),
+	[ip_address] nvarchar(4000),
+	[cc] nvarchar(4000),
+	[country] nvarchar(4000),
+	[birthdate] nvarchar(4000),
+	[salary] float,
+	[title] nvarchar(4000),
+	[comments] nvarchar(4000)
+	)
+	WITH (
+		DISTRIBUTION = ROUND_ROBIN,
+  		CLUSTERED COLUMNSTORE INDEX
+	)
+--****************format type************
+IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseParquetFormat') 
+	CREATE EXTERNAL FILE FORMAT [SynapseParquetFormat] 
+	WITH ( FORMAT_TYPE = PARQUET)
+GO
+---****copyinto****************
+select * into dbo.registrationnew from dbo.registration
+/*CREATE DATABASE SCOPED CREDENTIAL adlsextcred
+WITH IDENTITY='SHARED ACCESS SIGNATURE',
+--WITH IDENTITY ='Managed Identity'
+SECRET = 'sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupx&se=2022-03-21T20:29:40Z&st=2022-03-21T12:29:40Z&spr=https&sig=D%2BqV90dIbQTtoHja1QfkxaXJHUidHLtbu826ukRwSQo%3D'
+*/
+TRUNCATE TABLE DBO.REGISTRATION
+
+----NOT WORKING
+COPY INTO dbo.registration
+FROM 'https://cogrxsynapselake.dfs.core.windows.net/cogrxsynapselakefs/input/userdata1.parquet'
+--FROM 'abfss://cogrxsynapselakefs@cogrxsynapselake.dfs.core.windows.net/input/'
+WITH (
+      FILE_TYPE = 'PARQUET',
+   -- FILE_FORMAT = [SynapseParquetFormat],
+    CREDENTIAL = (
+        IDENTITY ='SHARED ACCESS SIGNATURE',
+        SECRET = 'sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupx&se=2022-03-23T02:40:34Z&st=2022-03-22T18:40:34Z&spr=https&sig=0bl08HVi%2F0NiNAh9KO%2FoxbJj1hc6Lv8Ndxhjf8aDcJU%3D'
+    )
+)
+---WORKING COPY INTO
+
+1. IF WE POINT TO FOLDER ALL THE FILES WILL BE USED TO LOAD
+2. IF WE POINT TO SPECIFIC FILE THEN ONLY THAT SPECIFIC FILE WILL BE LOADED
+TRUNCATE TABLE DBO.REGISTRATION
+COPY INTO dbo.registration
+FROM 'https://cogrxsynapselake.dfs.core.windows.net/cogrxsynapselakefs/input/'
+--FROM 'abfss://cogrxsynapselakefs@cogrxsynapselake.dfs.core.windows.net/input/'
+WITH (
+	FILE_FORMAT = [SynapseParquetFormat]
+)
+
+SELECT COUNT(*) FROM DBO.REGISTRATION
+
+	DATA_SOURCE = [synapsedatalakefs_synapsedatalake_dfs_core_windows_net],
+	FILE_FORMAT = [SynapseParquetFormat]
