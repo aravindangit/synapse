@@ -256,7 +256,13 @@ GO
 
 select count(*) from cogrxexternal
 GO
-
+*********************copy into on synapse**********************
+COPY INTO [Table1]
+FROM 'https://lake.dfs.core.windows.net/lake/staging/Table1/parquet/*.parquet'
+WITH (
+    FILE_FORMAT = [snappyparquet],
+    CREDENTIAL = (IDENTITY='Managed Identity')
+)
 
 SELECT TOP 100 * FROM dbo.cogrxexternal
 GO
